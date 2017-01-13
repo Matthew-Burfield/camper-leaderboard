@@ -1,49 +1,122 @@
-import React, {Component} from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom';
+import fetch from 'isomorphic-fetch';
 import style from '../styles/main.scss';
 
-const marked = require('marked');
-marked.setOptions({
-  renderer: new marked.Renderer(),
-  gfm: true,
-  tables: true,
-  breaks: false,
-  pedantic: false,
-  sanitize: false,
-  smartLists: true,
-  smartypants: false
-});
+class NavBar extends React.Component {
+  render() {
+    return <nav className="navbar navbar-inverse">
+      <div className="container-fluid">
+        <div className="navbar-header">
+          <a className="navbar-brand" style={{padding: 5, paddingLeft: 15}} href="#">
+            <img alt="Brand" src="./../../assets/images/leaderboard-icon.png" />
+          </a>
+        </div>
+      </div>
+    </nav>
+  }
+}
 
-class App extends Component {
+class LeaderBoardItem extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+  render() {
+    const tableData = this.props.display.map((user, index) => {
+      const userRating = index + 1; //index is 0 indexed
+      return <tr key={user.username}>
+        <td>{userRating}</td>
+        <td><img alt="user-icon" src={user.img} /> {user.username}</td>
+        <td>{user.recent}</td>
+        <td>{user.alltime}</td>
+       </tr>;
+    });
+    return <tbody>{tableData}</tbody>;
+  }
+}
+
+class App extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      textValue: "Heading\n=======\n\nSub-heading\n-----------\n \n### Another deeper heading\n \nParagraphs are separated\nby a blank line.\n\nLeave 2 spaces at the end of a line to do a  \nline break\n\nText attributes *italic*, **bold**, \n`monospace`, ~~strikethrough~~ .\n\nShopping list:\n\n  * apples\n  * oranges\n  * pears\n\nNumbered list:\n\n  1. apples\n  2. oranges\n  3. pears\n\nThe rain---not the reign---in\nSpain.\n\n *[Herman Fassett](https://freecodecamp.com/hermanfassett)*"
+      recent: [],
+      allTime: [],
+      recentLoaded: false,
+      allTimeLoaded: false,
+      display: [],
+      recentButtonClasses: "btn btn-default",
+      allTimeButtonClasses: "btn btn-default"
     }
-    this.handleOnChange = this.handleOnChange.bind(this);
+    this.clickHandlerRecent = this.clickHandlerRecent.bind(this);
+    this.clickHandlerAllTime = this.clickHandlerAllTime.bind(this);
   }
 
-  handleOnChange(e) {
+  componentWillMount () {
+    const URL = 'https://fcctop100.herokuapp.com/api/fccusers/top/';
+    const RECENT = 'recent';
+    const ALLTIME = 'alltime';
+    fetch(URL + RECENT).then(res=>res.json())
+      .then(response=>{
+        this.setState({
+          recent: response,
+          recentLoaded: true,
+          display: response,
+          recentButtonClasses: "btn btn-default active"
+        });
+      });
+    fetch(URL + ALLTIME).then(res=>res.json())
+      .then(response=>{
+        this.setState({
+          allTime: response,
+          allTimeLoaded: true
+        });
+      });
+  }
+
+  clickHandlerRecent (e) {
     this.setState({
-      textValue: e.target.value
-    });
+      display: this.state.recent,
+      recentButtonClasses: "btn btn-default active",
+      allTimeButtonClasses: "btn btn-default"
+    })
+  }
+
+  clickHandlerAllTime (e) {
+    this.setState({
+      display: this.state.allTime,
+      recentButtonClasses: "btn btn-default",
+      allTimeButtonClasses: "btn btn-default active"
+    })
   }
 
   render() {
-    return <div className="container">
-      <div className="header-text col-md-6 col-md-offset-3">
-        <h1 className="text-center">Markdown Previewer</h1>
-        <p className="text-center">With this application, you are able to type markdown 
-          into the text area on the left, and the markdown will 
-          then be displayed on the right with all of it's 
-          markdown style properties.</p>
-      </div>
-      <div className="row">
-        <div className="markdown col-md-6">
-          <textarea className="markdown-text" onChange={this.handleOnChange} value={this.state.textValue} />
+    return <div>
+      <NavBar />
+      <div className="container">
+        <h1 className="text-center">Leaderboard</h1>
+        <div className="btn-group btn-group-justified" role="group" aria-label="...">
+          <div className="btn-group" role="group">
+            <button type="button" className={this.state.recentButtonClasses} onClick={this.clickHandlerRecent}>Top 100 Recent</button>
+          </div>
+          <div className="btn-group" role="group">
+            <button type="button" className={this.state.allTimeButtonClasses} onClick={this.clickHandlerAllTime}>Top 100 All Time</button>
+          </div>
         </div>
-        <div className="markdown markdown-output border col-md-6" dangerouslySetInnerHTML={{ __html: marked(this.state.textValue) }} />
+        <div className="table-responsive">
+          <table className="table table-hover table-hover">
+              {this.state.recentLoaded && <LeaderBoardItem display={this.state.display} />}
+            <thead>
+              <tr>
+                <th>Rating</th>
+                <th>Name</th>
+                <th>Point in last 30 days</th>
+                <th>Total Points</th>
+              </tr>
+            </thead>
+          </table>
+        </div>
       </div>
+
     </div>
   }
 }
